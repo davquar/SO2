@@ -11,6 +11,8 @@ The error cases are the following:
 - **Directory doesn't exist**: print "La directory `dir` non esiste" on stderr, and return *exit status 20*;
 - **No read permissions for current user**: print "Impossibile leggere la directory `dir`" on stderr, and return *exit status 30*.
 
+The usage to print is: `Uso: 2.sh [dir]`.
+
 ## Script definition
 
 Given a directory `d`, the script scans its subtree for zipped files. For each zipped file found, it performs something.
