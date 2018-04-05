@@ -17,13 +17,25 @@ fi
 # test for permissions
 
 function handleExtracted() {
-    # Single file case
-    find _extracted -mindepth 1 -maxdepth 1 -type f | wc -l
+    cd _extracted
+    fileName=$1
+    ext=$2
+    numFiles=`find . -mindepth 1 -maxdepth 1 -type f | wc -l`
+    numDirs=`find . -mindepth 1 -maxdepth 1 -type d | wc -l`
 
-    # Single directory case
+    # Single file case
+    if [[ $numFiles == 1 && $numDirs == 0 ]]; then
+        extLength=`echo "$ext" | wc -c`
+        nameLength=`echo "$fileName" | wc -c`
+        fileName=`echo "$fileName" | cut -c 1-$((nameLength-extLength))`
+        echo $fileName
+    fi
+
+    # Single directory case 
 
     # Mixed content case
 
+    cd ..
     rm -rf _extracted
 }
 
@@ -40,7 +52,7 @@ function extractFile() {
     if [[ $file == *.zip ]]; then
         unzip -q $file -d _extracted </dev/null &>/dev/null &
         wait            # resume after background unzipping is done
-        handleExtracted
+        handleExtracted $file ".zip"
     #elif [[ $file == *.tar ]]; then
     #    echo
     ##elif [[ $file == *.tgz || $file == *.tar.gz ]]; then
