@@ -16,7 +16,18 @@ fi
 
 # test for permissions
 
-function handleFile() {
+function handleExtracted() {
+    # Single file case
+    find _extracted -mindepth 1 -maxdepth 1 -type f | wc -l
+
+    # Single directory case
+
+    # Mixed content case
+
+    rm -rf _extracted
+}
+
+function extractFile() {
     file=$1
     dir=$(dirname $file)
 
@@ -24,31 +35,35 @@ function handleFile() {
     # 1. tgz / tar.gz && tbz, tar.bz, tar.bz2
     # 2. gz %% bz, bz2
     
+    # checks should be case insensitive !!
+
     if [[ $file == *.zip ]]; then
-        echo zip
-    elif [[ $file == *.tar ]]; then
-        echo tar
-    elif [[ $file == *.tgz || $file == *.tar.gz ]]; then
-        echo tgz
-    elif [[ $file == *.tbz || $file == *.tar.bz || $file == *.tar.bz2 ]]; then
-        echo tbz
-    elif [[ $file == *.gz ]]; then
-        echo gz
-    elif [[ $file == *.bz || $file == *.bz2 ]]; then
-        echo bz
-    
+        unzip -q $file -d _extracted </dev/null &>/dev/null &
+        wait            # resume after background unzipping is done
+        handleExtracted
+    #elif [[ $file == *.tar ]]; then
+    #    echo
+    ##elif [[ $file == *.tgz || $file == *.tar.gz ]]; then
+    #    echo 
+    #elif [[ $file == *.tbz || $file == *.tar.bz || $file == *.tar.bz2 ]]; then
+    #    echo 
+    #elif [[ $file == *.gz ]]; then
+    #    echo 
+    #elif [[ $file == *.bz || $file == *.bz2 ]]; then
+    #    echo 
     fi
 }
 
 function scan() {
     currDir=$1
     
-    for f in `find $currDir -mindepth 1 -maxdepth 1 -type f -regex ".*\.\(zip\|tgz\|gz\|tbz\|bz\|bz2\|tar\)$"`; do
-        handleFile $f
-    done
-
     for d in `find $currDir -mindepth 1 -maxdepth 1 -type d`; do
         scan $d
+    done
+    
+    for f in `find $currDir -mindepth 1 -maxdepth 1 -type f -regex ".*\.\(zip\|tgz\|gz\|tbz\|bz\|bz2\|tar\)$"`; do
+        # the regex should be case insensitive !!
+        extractFile $f
     done
 }
 
