@@ -19,8 +19,8 @@ fi
 function handleExtracted() {
     thisDir=`dirname $1`
     echo Directory: $thisDir
-    if [ ! -d "$thisDir/out/" ]; then 
-        mkdir "$thisDir/out"
+    if [ ! -d "$thisDir" ]; then        # useless. previous version junk
+        mkdir "$thisDir"
     fi
     cd _extracted
     zipName=`basename $1`
@@ -33,7 +33,7 @@ function handleExtracted() {
         fileName=`ls`
         fileName="$zipName.$fileName"
         mv `ls` $fileName
-        mv $fileName "../$thisDir/out"
+        mv $fileName "../$thisDir"
         rm -f "../$thisDir/$zipName"
         
     # Single directory case
@@ -42,15 +42,15 @@ function handleExtracted() {
         dirName="$zipName.$dirName"
         mv `ls` $dirName
         mv "../$thisDir/$zipName" $dirName
-        mv $dirName "../$thisDir/out"
+        mv $dirName "../$thisDir"
 
     # Mixed content case
     else
         extLength=`echo "$2" | wc -c`                                           # $2 is the zipped file extension
         dirName=`echo "$zipName" | cut -c 1-$((zipNameLength-extLength))`       # remove extension from directory name
-        mkdir "../$thisDir/out/$dirName"
-        mv `ls` "../$thisDir/out/$dirName"
-        mv "../$thisDir/$zipName" "../$thisDir/out/$dirName"
+        mkdir "../$thisDir/$dirName"
+        mv `ls` "../$thisDir/$dirName"
+        mv "../$thisDir/$zipName" "../$thisDir/$dirName"
         
     fi
 
@@ -106,7 +106,7 @@ function extractFile() {
     elif [[ $file == *.bz2 ]]; then
         mv "$file" _extracted
         cd _extracted
-        bzip2 -d `basename "$file"`
+        bzip2 -d `basename "$file"` </dev/null &>/dev/null &
         cd ..
         wait
         handleExtracted $file ".bz2"
