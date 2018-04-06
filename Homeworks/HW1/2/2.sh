@@ -21,7 +21,6 @@ function handleExtracted() {
     echo Directory: $thisDir
     if [ ! -d "$thisDir/out/" ]; then 
         mkdir "$thisDir/out"
-        echo out path: `pwd`
     fi
     cd _extracted
     zipName=`basename $1`
@@ -35,7 +34,7 @@ function handleExtracted() {
         fileName="$zipName.$fileName"
         mv `ls` $fileName
         mv $fileName "../$thisDir/out"
-        rm -f $zipName
+        rm -f "../$thisDir/$zipName"
         
     # Single directory case
     elif [[ $numFiles == 0 && $numDirs == 1 ]]; then
@@ -47,7 +46,6 @@ function handleExtracted() {
 
     # Mixed content case
     else
-        echo mixed content
         extLength=`echo "$2" | wc -c`                                           # $2 is the zipped file extension
         dirName=`echo "$zipName" | cut -c 1-$((zipNameLength-extLength))`       # remove extension from directory name
         mkdir "../$thisDir/out/$dirName"
@@ -57,12 +55,12 @@ function handleExtracted() {
     fi
 
     cd ..
-    rm -rf _extracted
 }
 
 function extractFile() {
     file=$1
     dir=$(dirname $file)
+    mkdir _extracted
 
     # Priority:
     # 1. tgz / tar.gz && tbz, tar.bz, tar.bz2
@@ -74,13 +72,60 @@ function extractFile() {
         unzip -q $file -d _extracted </dev/null &>/dev/null &
         wait            # resume after background unzipping is done
         handleExtracted $file ".zip"
+    elif [[ $file == *.tar ]]; then
+        tar -xf $file -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted $file ".tar"
+
+    # Priority 1 start
+    elif [[ $file == *.tgz ]]; then
+        tar -xzf $file -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted $file ".tgz"
+    elif [[ $file == *.tar.gz ]]; then
+        tar -xzf $file -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted $file ".tar.gz"
+    elif [[ $file == *.tbz ]]; then
+        tar -xjf $file -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted $file ".tbz"
+    elif [[ $file == *.tar.bz ]]; then
+        tar -xjf $file -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted $file ".tar.bz"
+
+    # Priority 2 start
+    elif [[ $file == *.gz ]]; then
+        mv "$file" _extracted
+        cd _extracted
+        gzip -d `basename "$file"` </dev/null &>/dev/null &
+        cd ..
+        wait
+        handleExtracted $file ".gz"
+    elif [[ $file == *.bz2 ]]; then
+        mv "$file" _extracted
+        cd _extracted
+        bzip2 -d `basename "$file"`
+        cd ..
+        wait
+        handleExtracted $file ".bz2"
+    elif [[ $file == *.bz ]]; then
+        mv "$file" _extracted
+        cd _extracted
+        bzip2 -d `basename "$file"` </dev/null &>/dev/null &
+        cd ..
+        wait
+        handleExtracted $file ".bz"
     fi
+
+    rm -rf _extracted
 }
 
 function scan() {
     currDir=$1
     subdirs=`find $currDir -mindepth 1 -maxdepth 1 -type d`
-
+    
     for f in `find $currDir -mindepth 1 -maxdepth 1 -type f -iregex ".*\.\(zip\|tgz\|gz\|tbz\|bz2\|bz\|tar\)$"`; do
         extractFile $f
     done
