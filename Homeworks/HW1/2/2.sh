@@ -26,8 +26,6 @@ function handleExtracted() {
     cd _extracted
     zipName=`basename $1`
     zipNameLength=`echo "$zipName" | wc -c`
-    ext=$2
-    extLength=`echo "$ext" | wc -c`
     numFiles=`find . -mindepth 1 -maxdepth 1 -type f | wc -l`
     numDirs=`find . -mindepth 1 -maxdepth 1 -type d | wc -l`
 
@@ -39,17 +37,22 @@ function handleExtracted() {
         mv $fileName "../$thisDir/out"
         rm -f $zipName
         
-    ## Single directory case
+    # Single directory case
     elif [[ $numFiles == 0 && $numDirs == 1 ]]; then
         dirName=`ls`
         dirName="$zipName.$dirName"
         mv `ls` $dirName
-        cp "../$thisDir/$zipName" $dirName      # change to mv after testing
+        mv "../$thisDir/$zipName" $dirName
         mv $dirName "../$thisDir/out"
 
     # Mixed content case
     else
         echo mixed content
+        extLength=`echo "$2" | wc -c`                                           # $2 is the zipped file extension
+        dirName=`echo "$zipName" | cut -c 1-$((zipNameLength-extLength))`       # remove extension from directory name
+        mkdir "../$thisDir/out/$dirName"
+        mv `ls` "../$thisDir/out/$dirName"
+        mv "../$thisDir/$zipName" "../$thisDir/out/$dirName"
         
     fi
 
