@@ -1,6 +1,6 @@
 # Exercise 2 of HW 1
 
-Write a script `2.sh` with the syntax `2.sh [dir]`.
+Write a script `2.sh` with the synopsis `2.sh [dir]`.
 The `dir` parameter is a directory, that is `.` by default.
 
 ## Usage errors
