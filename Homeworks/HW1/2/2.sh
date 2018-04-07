@@ -1,24 +1,29 @@
 #!/bin/bash
 
 # Check if the usage is correct
-if [ $# -gt 1 ]
-then
+if [ $# -gt 1 ]; then
     (>&2 echo "Uso: $BASH_SOURCE [dir]")
     exit 10
 # Check if the directory is supplied
-elif [ $# -eq 1 ]
-then
-    rootDir=$1
-# Fallback to the current directory
+elif [ $# -eq 1 ]; then
+    if [ ! -d "$1" ]; then
+        (>&2 echo "La directory '$1' non esiste")
+        exit 20
+    fi
+    rootDir="$1"
+# Fallback to the current directory if it is not supplied
 else
     rootDir=.
 fi
 
-# test for permissions
+# Check for readability
+if [ ! -r "$rootDir" ]; then
+    (>&2 echo "Impossibile leggere la directory '$rootDir'")
+    exit 30
+fi
 
 function handleExtracted() {
     thisDir=`dirname $1`
-    echo Directory: $thisDir
     if [ ! -d "$thisDir" ]; then        # useless. previous version junk
         mkdir "$thisDir"
     fi
@@ -51,7 +56,6 @@ function handleExtracted() {
         mkdir "../$thisDir/$dirName"
         mv `ls` "../$thisDir/$dirName"
         mv "../$thisDir/$zipName" "../$thisDir/$dirName"
-        
     fi
 
     cd ..
@@ -94,6 +98,10 @@ function extractFile() {
         tar -xjf $file -C _extracted </dev/null &>/dev/null &
         wait
         handleExtracted $file ".tar.bz"
+    elif [[ $file == *.tar.bz2 ]]; then
+        tar -xjf $file -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted $file ".tar.bz2"
 
     # Priority 2 start
     elif [[ $file == *.gz ]]; then
