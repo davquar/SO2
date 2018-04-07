@@ -7,7 +7,7 @@ if [ $# -gt 1 ]; then
 # Check if the directory is supplied
 elif [ $# -eq 1 ]; then
     if [ ! -d "$1" ]; then
-        (>&2 echo "La directory '$1' non esiste")
+        (>&2 echo "La directory $1 non esiste")
         exit 20
     fi
     rootDir="$1"
@@ -18,15 +18,13 @@ fi
 
 # Check for readability
 if [ ! -r "$rootDir" ]; then
-    (>&2 echo "Impossibile leggere la directory '$rootDir'")
+    (>&2 echo "Impossibile leggere la directory $rootDir")
     exit 30
 fi
 
+# Organize che extracted files basing on the program's specs.
 function handleExtracted() {
     thisDir=`dirname $1`
-    if [ ! -d "$thisDir" ]; then        # useless. previous version junk
-        mkdir "$thisDir"
-    fi
     cd _extracted
     zipName=`basename $1`
     zipNameLength=`echo "$zipName" | wc -c`
@@ -35,96 +33,91 @@ function handleExtracted() {
 
     # Single file case
     if [[ $numFiles == 1 && $numDirs == 0 ]]; then
-        fileName=`ls`
-        fileName="$zipName.$fileName"
-        mv `ls` $fileName
-        mv $fileName "../$thisDir"
-        rm -f "../$thisDir/$zipName"
+        fileName=`ls -A`                                        # take the (single) content of the directory (accept hidden files with -A)
+        fileName="$zipName.$fileName"                           # set the new name of the extracted file
+        mv `ls -A` "$fileName"                                  # rename the file to the new name
+        mv "$fileName" "../$thisDir"                            # move it to the output directory
+        rm -f "../$thisDir/$zipName"                            # remove the original archive
         
     # Single directory case
     elif [[ $numFiles == 0 && $numDirs == 1 ]]; then
-        dirName=`ls`
-        dirName="$zipName.$dirName"
-        mv `ls` $dirName
-        mv "../$thisDir/$zipName" $dirName
-        mv $dirName "../$thisDir"
+        dirName=`ls -A`                                         # take the (single) directory (accept hidden ones with -A)
+        dirName="$zipName.$dirName"                             # set the new directory name
+        mv `ls -A` "$dirName"                                   # rename it
+        mv "../$thisDir/$zipName" "$dirName"                    # move here the original archive
+        mv "$dirName" "../$thisDir"                             # move this directory to the output folder
 
     # Mixed content case
     else
         extLength=`echo "$2" | wc -c`                                           # $2 is the zipped file extension
         dirName=`echo "$zipName" | cut -c 1-$((zipNameLength-extLength))`       # remove extension from directory name
-        mkdir "../$thisDir/$dirName"
-        mv `ls` "../$thisDir/$dirName"
-        mv "../$thisDir/$zipName" "../$thisDir/$dirName"
+        mkdir "../$thisDir/$dirName"                                            # create a directory with that name
+        mv `ls -A` "../$thisDir/$dirName"                                       # move everything to that directory
+        mv "../$thisDir/$zipName" "../$thisDir/$dirName"                        # move in the original archive
     fi
 
     cd ..
 }
 
+# Given a supported archive file, extracts its content in a temporary directory, and calls handleExtracted
 function extractFile() {
     file=$1
-    dir=$(dirname $file)
+    dir=$(dirname "$file")
     mkdir _extracted
 
-    # Priority:
-    # 1. tgz / tar.gz && tbz, tar.bz, tar.bz2
-    # 2. gz %% bz, bz2
-    
-    # checks should be case insensitive !!
-
-    if [[ $file == *.zip ]]; then
-        unzip -q $file -d _extracted </dev/null &>/dev/null &
-        wait            # resume after background unzipping is done
-        handleExtracted $file ".zip"
-    elif [[ $file == *.tar ]]; then
-        tar -xf $file -C _extracted </dev/null &>/dev/null &
+    if [[ "$file" == *.zip ]]; then
+        unzip -q "$file" -d _extracted </dev/null &>/dev/null &
         wait
-        handleExtracted $file ".tar"
+        handleExtracted "$file" ".zip"
+    elif [[ "$file" == *.tar ]]; then
+        tar -xf "$file" -C _extracted </dev/null &>/dev/null &
+        wait
+        handleExtracted "$file" ".tar"
 
     # Priority 1 start
-    elif [[ $file == *.tgz ]]; then
-        tar -xzf $file -C _extracted </dev/null &>/dev/null &
+    elif [[ "$file" == *.tgz ]]; then
+        tar -xzf "$file" -C _extracted </dev/null &>/dev/null &
         wait
-        handleExtracted $file ".tgz"
-    elif [[ $file == *.tar.gz ]]; then
-        tar -xzf $file -C _extracted </dev/null &>/dev/null &
+        handleExtracted "$file" ".tgz"
+    elif [[ "$file" == *.tar.gz ]]; then
+        tar -xzf "$file" -C _extracted </dev/null &>/dev/null &
         wait
-        handleExtracted $file ".tar.gz"
-    elif [[ $file == *.tbz ]]; then
-        tar -xjf $file -C _extracted </dev/null &>/dev/null &
+        handleExtracted "$file" ".tar.gz"
+    elif [[ "$file" == *.tbz ]]; then
+        tar -xjf "$file" -C _extracted </dev/null &>/dev/null &
         wait
-        handleExtracted $file ".tbz"
-    elif [[ $file == *.tar.bz ]]; then
-        tar -xjf $file -C _extracted </dev/null &>/dev/null &
+        handleExtracted "$file" ".tbz"
+    elif [[ "$file" == *.tar.bz ]]; then
+        tar -xjf "$file" -C _extracted </dev/null &>/dev/null &
         wait
-        handleExtracted $file ".tar.bz"
-    elif [[ $file == *.tar.bz2 ]]; then
-        tar -xjf $file -C _extracted </dev/null &>/dev/null &
+        handleExtracted "$file" ".tar.bz"
+    elif [[ "$file" == *.tar.bz2 ]]; then
+        tar -xjf "$file" -C _extracted </dev/null &>/dev/null &
         wait
-        handleExtracted $file ".tar.bz2"
+        handleExtracted "$file" ".tar.bz2"
 
     # Priority 2 start
-    elif [[ $file == *.gz ]]; then
+    elif [[ "$file" == *.gz ]]; then
         mv "$file" _extracted
         cd _extracted
         gzip -d `basename "$file"` </dev/null &>/dev/null &
         cd ..
         wait
-        handleExtracted $file ".gz"
-    elif [[ $file == *.bz2 ]]; then
+        handleExtracted "$file" ".gz"
+    elif [[ "$file" == *.bz2 ]]; then
         mv "$file" _extracted
         cd _extracted
         bzip2 -d `basename "$file"` </dev/null &>/dev/null &
         cd ..
         wait
-        handleExtracted $file ".bz2"
-    elif [[ $file == *.bz ]]; then
+        handleExtracted "$file" ".bz2"
+    elif [[ "$file" == *.bz ]]; then
         mv "$file" _extracted
         cd _extracted
         bzip2 -d `basename "$file"` </dev/null &>/dev/null &
         cd ..
         wait
-        handleExtracted $file ".bz"
+        handleExtracted "$file" ".bz"
     fi
 
     rm -rf _extracted
@@ -132,14 +125,14 @@ function extractFile() {
 
 function scan() {
     currDir=$1
-    subdirs=`find $currDir -mindepth 1 -maxdepth 1 -type d`
+    subdirs=`find "$currDir" -mindepth 1 -maxdepth 1 -type d`
     
-    for f in `find $currDir -mindepth 1 -maxdepth 1 -type f -iregex ".*\.\(zip\|tgz\|gz\|tbz\|bz2\|bz\|tar\)$"`; do
-        extractFile $f
+    for f in `find "$currDir" -mindepth 1 -maxdepth 1 -type f -iregex ".*\.\(zip\|tgz\|gz\|tbz\|bz2\|bz\|tar\)$"`; do
+        extractFile "$f"
     done
     
     for d in $subdirs; do
-        scan $d
+        scan "$d"
     done
     
 }
