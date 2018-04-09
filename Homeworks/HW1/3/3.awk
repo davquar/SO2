@@ -63,7 +63,7 @@ function findDeleted(n, v1, v2) {
 
 function findAdded(n, v1, v2) {
     for (j=0; j<n; j++) {
-        id = getId(i);
+        id = getId(j);
         round1 = rounds[id][v1];
         round2 = rounds[id][v2];
         if (round1 == "" && round2 != "") {
