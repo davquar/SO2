@@ -2,7 +2,6 @@
 
 BEGIN {
     FS = "|"
-    filesCount = ARGC;
     fileNumber = 0;
 }
 
@@ -11,27 +10,27 @@ BEGIN {
     $0 = cleanLine($0);
 }
 
-# File header
+# File header.
+# Each field is an hour (round)
 /[0-9]:[0-9]/ {
     fileNumber++;
     if (fileNumber == 1) {
-        header = gensub("[*]| ", "", "g", $0);
-        split(header, hours);
+        header = gensub("[*]| ", "", "g", $0);      # remove useless chacacters
     }
 }
 
-# All lines starting with a number
+# All lines starting with a number.
+# Each field is an ID (matricola).
 /^[0-9]/ {
     split($0, line);
     for (i in line) {
         id = line[i];
-        #hour = hours[i];
         if (id != "") rounds[id][fileNumber] = i;
     }
 }
 
 END	{
-    n = asorti(rounds, idPointers, "@ind_num_asc");
+    n = asorti(rounds, idPointers, "@ind_num_asc");     # idPointers is an array that maps an integer to an ID. n is the number of IDs.
     for (i=1; i<fileNumber; i++) {
         findChanged(n, i, i+1);
         findDeleted(n, i, i+1);
@@ -39,8 +38,9 @@ END	{
     }
 }
 
+# Print all the IDs which round had been added
 function findChanged(n, v1, v2) {
-    for (j=0; j<n; j++) {
+    for (j=0; j<=n; j++) {
         id = getId(j);
         round1 = rounds[id][v1];
         round2 = rounds[id][v2];
@@ -50,8 +50,9 @@ function findChanged(n, v1, v2) {
     }
 }
 
+# Print all the IDs which round had been deleted
 function findDeleted(n, v1, v2) {
-    for (j=0; j<n; j++) {
+    for (j=0; j<=n; j++) {
         id = getId(j);
         round1 = rounds[id][v1];
         round2 = rounds[id][v2];
@@ -61,8 +62,9 @@ function findDeleted(n, v1, v2) {
     }
 }
 
+# Print all the IDs which round had been added
 function findAdded(n, v1, v2) {
-    for (j=0; j<n; j++) {
+    for (j=0; j<=n; j++) {
         id = getId(j);
         round1 = rounds[id][v1];
         round2 = rounds[id][v2];
@@ -72,6 +74,7 @@ function findAdded(n, v1, v2) {
     }
 }
 
+# Get the real ID (matricola) from the sorted array
 function getId(pointer) {
     return idPointers[pointer];
 }
@@ -80,15 +83,4 @@ function getId(pointer) {
 function cleanLine(line) {
     line = gensub(" ", "", "g", line);
     return substr(line, 2, length(line)-2);
-}
-
-# funzione di comodità. serve per testare
-function printAll(n){
-    for (i=0; i<n; i++) {
-        id = getId(i);
-        print id ":";
-        for (j=1; j<fileNumber; j++) {
-            print rounds[id][j];
-        }
-    }
 }
