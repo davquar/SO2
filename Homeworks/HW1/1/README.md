@@ -94,17 +94,18 @@ The new exam for the first module is defined as follows:
 The results are stored in CSV files, this time with more structure:
 
 ```text
-new_res[aaaabbbb]$/
-    esami/
-        appelli/
-            date.txt
-            sa/
-            sb/
-            ...
-            sx/
-                bocciati.txt
-                promossi.web
-                orali.txt
+new_res[0-9]+$/
+	aaaabbbb/
+        esami/
+            appelli/
+                date.txt
+                sa/
+                sb/
+                ...
+                sx/
+                    bocciati.txt
+                    promossi.web
+                    orali.txt
 ```
 
 This needs a bit of explaination. Let's look at the content of these files:
@@ -148,7 +149,7 @@ Given a *matricola* `m`, the script's output should be ruled by these cases:
     - old mode --> 1 decimal digit;
     - new mode --> integer.
 - `m` only passed SO1 --> print "Risultato parziale modulo `i` per la matricola `m`: `so1_score` (`so1_date`)";
-- `m` passed SO1 and `SO2` after more than `n` years --> same;
+- `m` passed SO1 and SO2 after more than `n` years --> same;
 - `-1` given --> latest SO1 result;
 - `-2` given --> latest SO2 result;
 - no results for `m` --> don't print anything.
