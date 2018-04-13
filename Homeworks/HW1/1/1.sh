@@ -46,3 +46,37 @@ for (( i=1; i<${#args[@]}; i++ )); do
         exit 100
     fi
 done
+
+function getScoreFromCSV() {
+    foundLine=`cat $1 | grep $matr`
+    if [[ $foundLine != "" ]]; then
+        tempScore=`echo "$foundLine" | awk -F',' '{ print $4 }'`
+        tempScore=$tempScore.`echo "$foundLine" | awk -F',' '{ print $5 }'`
+        
+    fi
+}
+
+function getLatestOldScore() {
+    cd $1
+    
+    files=`ls | grep "res_[0-9]\{4,4\}_[0-9]\{1,2\}_[0-9]\{1,2\}_L[0-9]\{1,1\}\.csv" | tac`
+
+    l3Files=(`echo $files | grep "L3"`)
+    l2Files=(`echo $files | grep "L2"`)
+    l1Files=(`echo $files | grep "L1"`)
+
+    sessionsCount=`echo "$l3Files" | wc -l`
+    
+    for (( i=0; i<$sessionsCount; i++ )); do
+        getScoreFromCSV ${l3Files[$i]}
+        if [[ $tempScore != "" ]]; then
+            level3Score=$tempScore
+            echo $level3Score
+            break
+        fi
+    done
+
+    cd ..
+}
+
+getLatestOldScore "input_output.1/inp.1/old_res23403"
