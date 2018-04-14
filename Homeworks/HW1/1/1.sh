@@ -79,9 +79,49 @@ function getLatestOldScore() {
     if [[ $score > 31 ]]; then
         $score=31
     fi
-    echo $score
 
-    cd ..
+    cd ../../..
 }
 
-getLatestOldScore "data/inp.1/old_res23403"
+function getLatestNewScore() {
+    accademicYear=$year$(($year+1))
+    cd "$1/$accademicYear/esami/appelli"
+    
+    for line in `tac date.txt`; do
+        label=`echo $line | awk -F ':' '{ print $1 }'`
+        date=`echo $line | awk -F ':' '{ print $2 }'`
+        cd $label
+        if [[ -e "bocciati.txt" ]]; then
+            if [[ `cat bocciati.txt | grep $matr` != "" ]]; then
+                echo bocciato
+                cd ../../../../../../..
+                return
+            fi
+        fi
+        if [[ -e "orali.txt" ]]; then
+            foundLine=`cat orali.txt | grep $matr`
+            if [[ $foundLine != "" ]]; then
+                score=`echo $foundLine | awk -F '|' '{ print $3 }'`
+                echo orale: $score
+                cd ../../../../../../..
+                return
+            fi
+        fi
+        if [[ -e "promossi.web" ]]; then
+            foundLine=`cat promossi.web | grep $matr`
+            if [[ $foundLine != "" ]]; then
+                score=`echo $foundLine | awk -F '|' '{ print $3 }'`
+                echo promosso: $score
+                cd ../../../../../../..
+                return
+            fi
+        fi
+        echo nada
+        cd ..
+    done
+    
+    cd ../../../../../..
+}
+
+getLatestOldScore "$oldSo1Dir"
+getLatestNewScore "$newSo1Dir"
