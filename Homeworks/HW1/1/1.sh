@@ -1,10 +1,5 @@
 #!/bin/bash
 
-matr=$1
-oldSo1Dir=$2
-newSo1Dir=$3
-so2Dir=$4
-
 year=2018
 expirationYears=1
 latestSo1=false
@@ -15,7 +10,7 @@ function exitWithUse() {
     exit 10
 }
 
-while getopts ":y:n:12" opt; do
+while getopts "12y:n:" opt; do
     case $opt in
         y)  year=$OPTARG;;
         n)  numYears=$OPTARG;;
@@ -25,6 +20,13 @@ while getopts ":y:n:12" opt; do
         :)  exitWithUse;;
     esac
 done
+
+shift $(expr $OPTIND - 1)
+
+matr=$1
+oldSo1Dir=$2
+newSo1Dir=$3
+so2Dir=$4
 
 # Check if both -1 and -2 are given
 if [[ $latestSo1 == true && $latestSo2 == true ]]; then
@@ -55,6 +57,12 @@ function getScoreFromCSV() {
     fi
 }
 
+function getExamDateOld() {
+    examYear=`echo $1 | awk -F '_' '{ print $2 }'`
+    examMonth=`echo $1 | awk -F '_' '{ print $3 }'`
+    examDay=`echo $1 | awk -F '_' '{ print $4 }'`
+}
+
 function getLatestOldScore() {
     cd $1
     
@@ -72,6 +80,9 @@ function getLatestOldScore() {
             score=`echo $score + $tempScore | bc`
             getScoreFromCSV ${l1Files[$i]}
             score=`echo $score + $tempScore | bc`
+            getExamDateOld ${l3Files[$i]}
+            examDate=$examDay/$examMonth/$examYear
+            echo $examDate
             break
         fi
     done
@@ -93,7 +104,6 @@ function getLatestNewScore() {
         cd $label
         if [[ -e "bocciati.txt" ]]; then
             if [[ `cat bocciati.txt | grep $matr` != "" ]]; then
-                echo bocciato
                 cd ../../../../../../..
                 return
             fi
@@ -102,7 +112,6 @@ function getLatestNewScore() {
             foundLine=`cat orali.txt | grep $matr`
             if [[ $foundLine != "" ]]; then
                 score=`echo $foundLine | awk -F '|' '{ print $3 }'`
-                echo orale: $score
                 cd ../../../../../../..
                 return
             fi
@@ -111,17 +120,16 @@ function getLatestNewScore() {
             foundLine=`cat promossi.web | grep $matr`
             if [[ $foundLine != "" ]]; then
                 score=`echo $foundLine | awk -F '|' '{ print $3 }'`
-                echo promosso: $score
                 cd ../../../../../../..
                 return
             fi
         fi
-        echo nada
         cd ..
     done
+    echo "non ha fatto un modulo"
     
     cd ../../../../../..
 }
 
 getLatestOldScore "$oldSo1Dir"
-getLatestNewScore "$newSo1Dir"
+getLatestNewScore "$so2Dir"
