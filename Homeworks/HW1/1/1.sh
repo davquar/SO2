@@ -1,7 +1,7 @@
 #!/bin/bash
 
 year=2018
-expirationYears=1
+numYears=1
 latestSo1=false
 latestSo2=false
 
@@ -93,25 +93,24 @@ function getLatestOldScore() {
 }
 
 function getAccademicYear() {
-    accademicYear=$(($year - $1))
+    accademicYear=$(($year+1 - $1))
     accademicYear=$(($accademicYear - 1))$accademicYear
 }
 
 function getLatestNewScore() {
-    for (( i=0; i<numYears; i++ )); do
+    for (( i=0; i<=numYears; i++ )); do
         getAccademicYear $i
-        echo anno: $accademicYear
         if [[ ! -d "$1/$accademicYear" ]]; then
             continue
         fi
         cd "$1/$accademicYear/esami/appelli"
         for line in `tac date.txt`; do
             label=`echo $line | awk -F ':' '{ print $1 }'`
-            examDate=`echo $line | awk -F ':' '{ print $2 }'`
+            examDate=`echo $line | awk -F ':' '{ print $2 }' | date -f - +%d/%m/%Y`
             cd $label
             if [[ -e "bocciati.txt" ]]; then
                 if [[ `cat bocciati.txt | grep $matr` != "" ]]; then
-                    cd ../../../../..
+                    cd ../../../../../..
                     return
                 fi
             fi
@@ -119,7 +118,7 @@ function getLatestNewScore() {
                 foundLine=`cat orali.txt | grep $matr`
                 if [[ $foundLine != "" ]]; then
                     score=`echo $foundLine | awk -F '|' '{ print $3 }'`
-                    cd ../../../../..
+                    cd ../../../../../..
                     return
                 fi
             fi
@@ -127,15 +126,14 @@ function getLatestNewScore() {
                 foundLine=`cat promossi.web | grep $matr`
                 if [[ $foundLine != "" ]]; then
                     score=`echo $foundLine | awk -F '|' '{ print $3 }'`
-                    cd ../../../../..
+                    cd ../../../../../..
                     return
                 fi
             fi
             cd ..
         done
-    done
-    
     cd ../../../../..
+    done
 }
 
 getLatestNewScore "$newSo1Dir"
@@ -150,6 +148,9 @@ examDate=""
 getLatestNewScore "$so2Dir"
 so2Score=$score
 so2Date=$examDate
+
+so1Score=`echo $so1Score | xargs`
+so2Score=`echo $so2Score | xargs`
 
 echo "Matricola $matr:"
 echo "-- SO1: $so1Score ($so1Date)"
