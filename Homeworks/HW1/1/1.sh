@@ -30,7 +30,6 @@ so2Dir=$4
 
 # Check if both -1 and -2 are given
 if [[ $latestSo1 == true && $latestSo2 == true ]]; then
-    echo certo
     exitWithUse
 fi
 
@@ -72,7 +71,7 @@ function getLatestOldScore() {
     
     sessionsCount=${#l3Files[@]}
     
-    for (( i=0; i<$sessionsCount; i++ )); do
+    for (( i=0; i<sessionsCount; i++ )); do
         getScoreFromCSV ${l3Files[$i]}
         if [[ $tempScore != "" ]]; then
             score=$tempScore
@@ -87,73 +86,71 @@ function getLatestOldScore() {
     done
 
     if [[ $score > 31 ]]; then
-        $score=31
+        score=31
     fi
 
     cd ../..
 }
 
+function getAccademicYear() {
+    accademicYear=$(($year - $1))
+    accademicYear=$(($accademicYear - 1))$accademicYear
+}
+
 function getLatestNewScore() {
-    echo $matr
-    accademicYear=$year$(($year+1))
-    ls
-    cd "$1/$accademicYear/esami/appelli"
-    for line in `tac date.txt`; do
-        label=`echo $line | awk -F ':' '{ print $1 }'`
-        examDate=`echo $line | awk -F ':' '{ print $2 }'`
-        cd $label
-        if [[ -e "bocciati.txt" ]]; then
-            if [[ `cat bocciati.txt | grep $matr` != "" ]]; then
-                cd ../../../../..
-                return
-            fi
+    for (( i=0; i<numYears; i++ )); do
+        getAccademicYear $i
+        echo anno: $accademicYear
+        if [[ ! -d "$1/$accademicYear" ]]; then
+            continue
         fi
-        if [[ -e "orali.txt" ]]; then
-            foundLine=`cat orali.txt | grep $matr`
-            if [[ $foundLine != "" ]]; then
-                score=`echo $foundLine | awk -F '|' '{ print $3 }'`
-                cd ../../../../..
-                return
+        cd "$1/$accademicYear/esami/appelli"
+        for line in `tac date.txt`; do
+            label=`echo $line | awk -F ':' '{ print $1 }'`
+            examDate=`echo $line | awk -F ':' '{ print $2 }'`
+            cd $label
+            if [[ -e "bocciati.txt" ]]; then
+                if [[ `cat bocciati.txt | grep $matr` != "" ]]; then
+                    cd ../../../../..
+                    return
+                fi
             fi
-        fi
-        if [[ -e "promossi.web" ]]; then
-            foundLine=`cat promossi.web | grep $matr`
-            if [[ $foundLine != "" ]]; then
-                score=`echo $foundLine | awk -F '|' '{ print $3 }'`
-                cd ../../../../..
-                return
+            if [[ -e "orali.txt" ]]; then
+                foundLine=`cat orali.txt | grep $matr`
+                if [[ $foundLine != "" ]]; then
+                    score=`echo $foundLine | awk -F '|' '{ print $3 }'`
+                    cd ../../../../..
+                    return
+                fi
             fi
-        fi
-        cd ..
+            if [[ -e "promossi.web" ]]; then
+                foundLine=`cat promossi.web | grep $matr`
+                if [[ $foundLine != "" ]]; then
+                    score=`echo $foundLine | awk -F '|' '{ print $3 }'`
+                    cd ../../../../..
+                    return
+                fi
+            fi
+            cd ..
+        done
     done
     
     cd ../../../../..
 }
 
-if [[ $year < 2017 ]]; then
+getLatestNewScore "$newSo1Dir"
+if [[ $score == "" ]]; then
     getLatestOldScore "$oldSo1Dir"
-    if [[ $score != "" ]]; then
-        so1Score=$score
-        so1Date=$examDate
-    fi
-    score=""
-    getLatestNewScore "$so2Dir"
-    if [[ $score != "" ]]; then
-        echo "Risultato finale per la matricola $matr: $so1Score ($so1Date) + $score ($examDate)"
-    elif [[ $so1Score != "" ]]; then
-        echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
-    fi
-else
-    getLatestNewScore "$newSo1Dir"
-    if [[ $score != "" ]]; then
-        so1Score=$score
-        so1Date=$examDate
-    fi
-    score=""
-    getLatestNewScore "$so2Dir"
-    if [[ $score != "" ]]; then
-        echo "Risultato finale per la matricola $matr: $so1Score ($so1Date) + $score ($examDate)"
-    elif [[ $so1Score != "" ]]; then
-        echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
-    fi
 fi
+so1Score=$score
+so1Date=$examDate
+score=""
+examDate=""
+
+getLatestNewScore "$so2Dir"
+so2Score=$score
+so2Date=$examDate
+
+echo "Matricola $matr:"
+echo "-- SO1: $so1Score ($so1Date)"
+echo "-- SO2: $so2Score ($so2Date)"
