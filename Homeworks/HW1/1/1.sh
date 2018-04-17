@@ -152,6 +152,26 @@ so2Date=$examDate
 so1Score=`echo $so1Score | xargs`
 so2Score=`echo $so2Score | xargs`
 
-echo "Matricola $matr:"
-echo "-- SO1: $so1Score ($so1Date)"
-echo "-- SO2: $so2Score ($so2Date)"
+if [[ $so1Score == "" ]]; then
+    so1Score=0
+fi
+if [[ $so2Score == "" ]]; then
+    so2Score=0
+fi
+
+# Check for expiration, #y-min(y1,y2)<=n
+y1=`echo $so1Date | awk -F '/' '{ print $3 }'`
+y2=`echo $so2Date | awk -F '/' '{ print $3 }'`
+min=$(( $y1 < $y2 ? $y1 : $y2 ))
+d1=$((y1-y2))
+if [[ ${d1#-} > $numYears && $((year-min > numYears)) ]]; then
+    exit
+fi
+
+if [[ `echo "$so1Score >= 18" | bc -l` == 1 && `echo "$so2Score < 18" | bc -l` == 1 ]]; then
+    echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
+elif [[ `echo "$so1Score < 18" | bc -l` == 1 && `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
+    echo "Risultato parziale modulo 2 per la matricola $matr: $so2Score ($so2Date)"
+elif [[ `echo "$so1Score >= 18" | bc -l` == 1 && `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
+    echo "Risultato finale per la matricola $matr: $so1Score ($so1Date) + $so2Score ($so2Date) = "
+fi
