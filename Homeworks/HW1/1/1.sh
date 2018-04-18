@@ -80,7 +80,7 @@ function getLatestOldScore() {
             getScoreFromCSV ${l1Files[$i]}
             score=`echo $score + $tempScore | bc`
             getExamDateOld ${l3Files[$i]}
-            examDate=$examDay/$examMonth/$examYear
+            examDate=`echo $examYear/$examMonth/$examDay | date -f - +%d/%m/%Y`
             break
         fi
     done
@@ -180,13 +180,29 @@ fi
 d1=$((y1-y2))
 d1=${d1#-}
 
+if [[ $latestSo1 == true ]]; then
+    if [[ `echo "$so1Score >= 18" | bc -l` == 1 ]]; then
+        if (( year-min > numYears || year-min < 0  )); then exit; fi
+        echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
+    fi
+    exit
+fi
+if [[ $latestSo2 == true ]]; then
+    if [[ `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
+        if (( year-min > numYears || year-min < 0  )); then exit; fi
+        echo "Risultato parziale modulo 2 per la matricola $matr: $so2Score ($so2Date)"
+    fi
+    exit
+fi
+
 if [[ `echo "$so1Score >= 18" | bc -l` == 1 && `echo "$so2Score < 18" | bc -l` == 1 ]]; then
-    if (( year-min > numYears )); then exit; fi
+    if (( year-min > numYears || year-min < 0 )); then exit; fi
     echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
 elif [[ `echo "$so1Score < 18" | bc -l` == 1 && `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
-    if (( year-min > numYears )); then exit; fi
+    if (( year-min > numYears || year-min < 0 )); then exit; fi
     echo "Risultato parziale modulo 2 per la matricola $matr: $so2Score ($so2Date)"
 elif [[ `echo "$so1Score >= 18" | bc -l` == 1 && `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
-    if (( d1 > numYears )) && (( year-min > numYears )) ; then exit; fi
-    echo "Risultato finale per la matricola $matr: $so1Score ($so1Date) + $so2Score ($so2Date) = "
+    if (( d1 > numYears )) && (( year-min > numYears || year-min < 0 )) ; then exit; fi
+    finalScore=`echo "scale=1; ($so1Score+$so2Score)/2" | bc | xargs printf '%.0f'`
+    echo "Risultato finale per la matricola $matr: $so1Score ($so1Date) + $so2Score ($so2Date) = $finalScore"
 fi
