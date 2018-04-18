@@ -140,38 +140,46 @@ getLatestNewScore "$newSo1Dir"
 if [[ $score == "" ]]; then
     getLatestOldScore "$oldSo1Dir"
 fi
+if [[ $score == "" ]]; then
+    examDate=""
+fi
 so1Score=$score
 so1Date=$examDate
 score=""
 examDate=""
 
 getLatestNewScore "$so2Dir"
+if [[ $score == "" ]]; then examDate=""; fi
 so2Score=$score
 so2Date=$examDate
 
 so1Score=`echo $so1Score | xargs`
 so2Score=`echo $so2Score | xargs`
 
-if [[ $so1Score == "" ]]; then
-    so1Score=0
-fi
-if [[ $so2Score == "" ]]; then
-    so2Score=0
-fi
+if [[ $so1Score == "" && $so2Score == "" ]]; then exit; fi
+
+if [[ $so1Score == "" ]]; then so1Score=0; fi
+if [[ $so2Score == "" ]]; then so2Score=0; fi
 
 # Check for expiration, #y-min(y1,y2)<=n
 y1=`echo $so1Date | awk -F '/' '{ print $3 }'`
 y2=`echo $so2Date | awk -F '/' '{ print $3 }'`
-min=$(( $y1 < $y2 ? $y1 : $y2 ))
-d1=$((y1-y2))
-if [[ ${d1#-} > $numYears && $((year-min > numYears)) ]]; then
-    exit
+
+if [[ $y1 == "" ]]; then min=$y2
+elif [[ $y2 == "" ]]; then min=$y1
+elif [[ $y1 < $y2 ]]; then min=$y1
+else min=$y2
 fi
+d1=$((y1-y2))
+d1=${d1#-}
 
 if [[ `echo "$so1Score >= 18" | bc -l` == 1 && `echo "$so2Score < 18" | bc -l` == 1 ]]; then
+    if (( year-min > numYears )); then exit; fi
     echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
 elif [[ `echo "$so1Score < 18" | bc -l` == 1 && `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
+    if (( year-min > numYears )); then exit; fi
     echo "Risultato parziale modulo 2 per la matricola $matr: $so2Score ($so2Date)"
 elif [[ `echo "$so1Score >= 18" | bc -l` == 1 && `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
+    if (( d1 > numYears )) && (( year-min > numYears )) ; then exit; fi
     echo "Risultato finale per la matricola $matr: $so1Score ($so1Date) + $so2Score ($so2Date) = "
 fi
