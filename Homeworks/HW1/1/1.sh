@@ -136,23 +136,30 @@ function getLatestNewScore() {
     done
 }
 
-getLatestNewScore "$newSo1Dir"
-if [[ $score == "" ]]; then
-    getLatestOldScore "$oldSo1Dir"
+# -- OUTPUT --
+
+getLatestNewScore "$newSo1Dir"              # try to get the SO1 score from the new data
+if [[ $score == "" ]]; then                 # if it is empty, we should look in the old data
+    getLatestOldScore "$oldSo1Dir"          # try to get the SO1 score from the old data
 fi
+
+# Make sure that the exam date is empty if no SO1 score had been found
 if [[ $score == "" ]]; then
     examDate=""
 fi
 so1Score=$score
 so1Date=$examDate
+
+# Reset temporary fields for the next use
 score=""
 examDate=""
 
-getLatestNewScore "$so2Dir"
-if [[ $score == "" ]]; then examDate=""; fi
+getLatestNewScore "$so2Dir"                     # try to get SO2 score
+if [[ $score == "" ]]; then examDate=""; fi     # make sure that the date is empty if SO2 hadn't been done
 so2Score=$score
 so2Date=$examDate
 
+# Strip whitespaces
 so1Score=`echo $so1Score | xargs`
 so2Score=`echo $so2Score | xargs`
 
@@ -161,7 +168,7 @@ if [[ $so1Score == "" && $so2Score == "" ]]; then exit; fi
 if [[ $so1Score == "" ]]; then so1Score=0; fi
 if [[ $so2Score == "" ]]; then so2Score=0; fi
 
-# Check for expiration, #y-min(y1,y2)<=n
+# Extract the years
 y1=`echo $so1Date | awk -F '/' '{ print $3 }'`
 y2=`echo $so2Date | awk -F '/' '{ print $3 }'`
 
