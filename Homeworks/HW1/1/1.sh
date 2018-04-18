@@ -42,7 +42,7 @@ fi
 args=("$@")
 for (( i=1; i<${#args[@]}; i++ )); do
     dir=${args[i]}
-    if [[ ! -e "$dir" || ! -r "$dir" ]]; then
+    if [[ ! -e "$dir" || ! -r "$dir" || `ls "$dir"` == "" ]]; then
         echo "La directory $dir o non esiste o non ha i diritti di lettura/esecuzione" >&2
         exit 100
     fi
@@ -182,14 +182,14 @@ d1=${d1#-}
 
 if [[ $latestSo1 == true ]]; then
     if [[ `echo "$so1Score >= 18" | bc -l` == 1 ]]; then
-        if (( year-min > numYears || year-min < 0  )); then exit; fi
+        if (( year-min > numYears || year-min < 0 )); then exit; fi
         echo "Risultato parziale modulo 1 per la matricola $matr: $so1Score ($so1Date)"
     fi
     exit
 fi
 if [[ $latestSo2 == true ]]; then
     if [[ `echo "$so2Score >= 18" | bc -l` == 1 ]]; then
-        if (( year-min > numYears || year-min < 0  )); then exit; fi
+        if (( year-min > numYears || year-min < 0 )); then exit; fi
         echo "Risultato parziale modulo 2 per la matricola $matr: $so2Score ($so2Date)"
     fi
     exit
