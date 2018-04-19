@@ -42,7 +42,7 @@ fi
 args=("$@")
 for (( i=1; i<${#args[@]}; i++ )); do
     dir=${args[i]}
-    if [[ ! -e "$dir" || ! -r "$dir" || `ls "$dir"` == "" ]]; then
+    if [[ ! -d "$dir" || ! -r "$dir" || ! -x "$dir" ]]; then
         echo "La directory $dir o non esiste o non ha i diritti di lettura/esecuzione" >&2
         exit 100
     fi
