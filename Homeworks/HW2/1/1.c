@@ -11,14 +11,14 @@ void traverse(const char* path, int level, int* pipeJump);
 void printSpaces(int level, int lastOfFolder, int* pipeJump);
 int isDir(const char* path);
 void initJumps();
+int canGoDown(int level);
 
 char* pattern;
-int maxLevels;
+int maxLevels = -1;
 int allFiles;
 
 int dirsCount;
 int filesCount;
-//int pipeJump[PATH_MAX];
 
 int main(int argc, char** argv) {
     int c;
@@ -96,7 +96,7 @@ void traverse(const char* path, int level, int* pipeJump) {
         printf("\n");
         printSpaces(level, lastOfFolder, pipeJump);
         printf("%s", name);
-        if (names[i]->d_type == DT_DIR) {
+        if (names[i]->d_type == DT_DIR && canGoDown(level)) {
             dirsCount++;
             int nextPathLength;
             char nextPath[PATH_MAX];
@@ -107,7 +107,6 @@ void traverse(const char* path, int level, int* pipeJump) {
         }
         free(names[i]);
     }
-    //initJumps();
     free(names);
 }
 
@@ -136,8 +135,7 @@ int isDir(const char* path) {
     return S_ISDIR(statbuf.st_mode);
 }
 
-/* void initJumps() {
-    for(int i = 0; i < PATH_MAX; i++) {
-        pipeJump[i] = 0;
-    }
-} */
+int canGoDown(int level) {
+    if (maxLevels < 0) return 1;
+    return level < maxLevels;
+}
