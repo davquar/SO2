@@ -12,6 +12,10 @@ void printSpaces(int level, int lastOfFolder, int* pipeJump);
 int isDir(const char* path);
 void initJumps();
 
+char* pattern;
+int maxLevels;
+int allFiles;
+
 int dirsCount;
 int filesCount;
 //int pipeJump[PATH_MAX];
@@ -19,9 +23,7 @@ int filesCount;
 int main(int argc, char** argv) {
     int c;
     extern char* optarg;
-    char* pattern;
-    int maxLevels;
-    int allFiles;
+    opterr = 0;
 
     int i = 0;
     while ((c = getopt(argc, argv, "P:L:a")) != -1) {
@@ -29,25 +31,45 @@ int main(int argc, char** argv) {
             case 'a':
                 allFiles = 1;
                 i++;
+                //printf("all files\n");
                 break;
             case 'P':
                 pattern = optarg;
+                //printf("pattern: %s\n", pattern);
                 i++;
                 break;
             case 'L':
                 maxLevels = atoi(optarg);
+                //printf("max levels: %d\n", maxLevels);
                 i++;
+                break;
+            case '?':
+                if (optopt == 'P' || optopt == 'L') {
+                    fprintf(stderr, "Usage: 1 [-P pattern] [-L level] [-a] [dirs]\n");
+                    return 100;
+                }
                 break;
         }
     }
 
-    for (i+=1; i<argc; i++) {
-        printf("%s\n", argv[i]);
+    //printf("argc: %d\ni: %d\noptind:%d\n", argc, i, optind);
+
+    // if nothing is passed as argument, fall back to the current directory
+    if (optind == argc) {
+        const char* path = ".";
+        printf("%s", path);
+        int pipeJump[PATH_MAX];
+        traverse(path, 0, pipeJump);
+    }
+
+    // the following can't be reached if optind==argc
+    for (i=optind; i<argc; i++) {
+        printf("%d: %s", i, argv[i]);
         int pipeJump[PATH_MAX];
         traverse(argv[i], 0, pipeJump);
     }
 
-    printf("\n%d directories, %d files", dirsCount, filesCount);
+    printf("\n\n%d directories, %d files\n", dirsCount, filesCount);
 
     return 0;
 }
@@ -58,20 +80,22 @@ void traverse(const char* path, int level, int* pipeJump) {
 
     n = scandir(path, &names, NULL, alphasort);
     if (n == -1) {
-        perror("scandir");
-        exit(EXIT_FAILURE);
+        printf(" [error opening dir because of being not a dir]");
+        exit(10);
     }
 
     for (int i=0; i<n; i++) {
         char* name = names[i]->d_name;
-        if (!strncmp(name, ".", 1)) continue;
+        if (!strcmp(name, ".") || !strcmp(name, "..")) continue;    // skip FS structure files
+        if (!allFiles && !strncmp(name, ".", 1)) continue;          // skip dotfiles if needed
         int lastOfFolder = (i == n-1) ? 1 : 0;
         if (lastOfFolder)
             pipeJump[level] = 1;
         else   
             pipeJump[level] = 0;
+        printf("\n");
         printSpaces(level, lastOfFolder, pipeJump);
-        printf("%s\n", name);
+        printf("%s", name);
         if (names[i]->d_type == DT_DIR) {
             dirsCount++;
             int nextPathLength;
