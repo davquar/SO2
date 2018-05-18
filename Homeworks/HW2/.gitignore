@@ -3,3 +3,4 @@ grader.2
 *.out
 .vscode
 tests
+valgrind.txt

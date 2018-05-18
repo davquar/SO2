@@ -13,17 +13,17 @@ int isDir(const char* path);
 void initJumps();
 int canGoDown(int level);
 
-char* pattern;
+char* pattern = "";
 int maxLevels = -1;
-int allFiles;
+int allFiles = -1;
 
-int dirsCount;
-int filesCount;
+int dirsCount = 0;
+int filesCount = 0;
 
 int main(int argc, char** argv) {
-    int c;
-    extern char* optarg;
-    opterr = 0;
+    int c = -1;
+    //char* optarg = "";
+    //opterr = 0;
 
     int i = 0;
     while ((c = getopt(argc, argv, "P:L:a")) != -1) {
@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
             case '?':
                 if (optopt == 'P' || optopt == 'L') {
                     fprintf(stderr, "Usage: 1 [-P pattern] [-L level] [-a] [dirs]\n");
-                    return 100;
+                    exit(100);
                 }
                 break;
         }
@@ -70,15 +70,12 @@ int main(int argc, char** argv) {
     }
 
     printf("\n\n%d directories, %d files\n", dirsCount, filesCount);
-
-    return 0;
+    exit(0);
 }
 
 void traverse(const char* path, int level, int* pipeJump) {
     struct dirent** names;
-    int n;
-
-    n = scandir(path, &names, NULL, alphasort);
+    int n = scandir(path, &names, 0, alphasort);
     if (n == -1) {
         printf(" [error opening dir because of being not a dir]");
         exit(10);
@@ -103,8 +100,8 @@ void traverse(const char* path, int level, int* pipeJump) {
             snprintf(nextPath, PATH_MAX, "%s/%s", path, name);
             traverse(nextPath, level+1, pipeJump);
         } else if (names[i]->d_type == DT_LNK) {
-            char fullPath[PATH_MAX];
-            char linkDst[PATH_MAX];
+            char* fullPath = (char*) calloc(PATH_MAX, sizeof(char));
+            char* linkDst = (char*) calloc(PATH_MAX, sizeof(char));
             snprintf(fullPath, PATH_MAX, "%s/%s", path, name);
             if (readlink(fullPath, linkDst, sizeof(linkDst)) < 0) {
                 perror("System call readlink() failed because of");
@@ -112,12 +109,12 @@ void traverse(const char* path, int level, int* pipeJump) {
             } else
                 printf(" -> %s", linkDst);
             filesCount++;
-        }
-        else {
-            filesCount++;
-        }
-        free(names[i]);
+            free(linkDst);
+            free(fullPath);
+        } else filesCount++;
     }
+    
+    while (n--) free(names[n]);
     free(names);
 }
 

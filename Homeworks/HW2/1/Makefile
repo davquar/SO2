@@ -1,5 +1,5 @@
 make1: 1.c
-	gcc -o 1 1.c -I .
+	gcc -g -o 1 1.c -I .
 
 .PHONY: clean
 
