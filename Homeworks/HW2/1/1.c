@@ -6,12 +6,19 @@
 #include <sys/stat.h>
 #include <string.h>
 #include <limits.h>
+#include <fnmatch.h>
+
+typedef struct filteredDirent {
+    struct dirent** dirent;
+    int n;
+} direntWrapper;
 
 void traverse(const char* path, int level, int* pipeJump);
 void printSpaces(int level, int lastOfFolder, int* pipeJump);
 int isDir(const char* path);
 void initJumps();
 int canGoDown(int level);
+direntWrapper* filter(char* pattern, struct dirent** names, int length);
 
 char* pattern = "";
 int maxLevels = -1;
@@ -83,9 +90,16 @@ void traverse(const char* path, int level, int* pipeJump) {
         exit(10);
     }
 
-    for (int i=2; i<n; i++) {
+    if (pattern != "") {
+        direntWrapper* filtered = filter(pattern, names, n);
+        names = filtered->dirent;
+        n = filtered->n;
+    }
+
+    for (int i=0; i<n; i++) {
         char* name = names[i]->d_name;
         if (!allFiles && name[0] == '.') continue;          // skip dotfiles if needed
+        //if (names[i]->d_type != DT_DIR && pattern != "" && fnmatch(pattern, name, FNM_PERIOD) != 0) continue;
         int lastOfFolder = (i == n-1) ? 1 : 0;
         if (lastOfFolder)
             pipeJump[level] = 1;
@@ -94,6 +108,7 @@ void traverse(const char* path, int level, int* pipeJump) {
         printf("\n");
         printSpaces(level, lastOfFolder, pipeJump);
         printf("%s", name);
+
         if (names[i]->d_type == DT_DIR) {
             dirsCount++;
             if (!canGoDown(level)) continue;
@@ -112,7 +127,9 @@ void traverse(const char* path, int level, int* pipeJump) {
                 printf(" -> %s", linkDst);
             free(linkDst);
             free(fullPath);
-        } else filesCount++;
+        } else {
+            filesCount++;
+        }
     }
     
     while (n--) free(names[n]);
@@ -147,4 +164,18 @@ int isDir(const char* path) {
 int canGoDown(int level) {
     if (maxLevels < 0) return 1;
     return level < maxLevels;
+}
+
+direntWrapper* filter(char* pattern, struct dirent** names, int length) {
+    int n=0;
+    direntWrapper* filtered = (direntWrapper*) calloc(1, sizeof(direntWrapper));
+    filtered->dirent = (struct dirent**) calloc(0, sizeof(struct dirent));
+    for (int i=2; i<length; i++) {
+        if (names[i]->d_type == DT_DIR || fnmatch(pattern, names[i]->d_name, FNM_PERIOD) == 0) {
+            filtered->dirent = realloc(filtered->dirent, (++n)*sizeof(struct dirent));
+            filtered->dirent[n-1] = names[i];
+            filtered->n = n;
+        }
+    }
+    return filtered;
 }
