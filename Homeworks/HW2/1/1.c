@@ -99,7 +99,6 @@ void traverse(const char* path, int level, int* pipeJump) {
     for (int i=0; i<n; i++) {
         char* name = names[i]->d_name;
         if (!allFiles && name[0] == '.') continue;          // skip dotfiles if needed
-        //if (names[i]->d_type != DT_DIR && pattern != "" && fnmatch(pattern, name, FNM_PERIOD) != 0) continue;
         int lastOfFolder = (i == n-1) ? 1 : 0;
         if (lastOfFolder)
             pipeJump[level] = 1;
