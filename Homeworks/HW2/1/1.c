@@ -98,11 +98,22 @@ void traverse(const char* path, int level, int* pipeJump) {
         printf("%s", name);
         if (names[i]->d_type == DT_DIR && canGoDown(level)) {
             dirsCount++;
-            int nextPathLength;
+            //int nextPathLength;
             char nextPath[PATH_MAX];
-            nextPathLength = snprintf(nextPath, PATH_MAX, "%s/%s", path, name);
+            snprintf(nextPath, PATH_MAX, "%s/%s", path, name);
             traverse(nextPath, level+1, pipeJump);
-        } else {
+        } else if (names[i]->d_type == DT_LNK) {
+            char fullPath[PATH_MAX];
+            char linkDst[PATH_MAX];
+            snprintf(fullPath, PATH_MAX, "%s/%s", path, name);
+            if (readlink(fullPath, linkDst, sizeof(linkDst)) < 0) {
+                perror("System call readlink() failed because of");
+                exit(100);
+            } else
+                printf(" -> %s", linkDst);
+            filesCount++;
+        }
+        else {
             filesCount++;
         }
         free(names[i]);
