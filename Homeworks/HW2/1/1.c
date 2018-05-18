@@ -15,7 +15,7 @@ int canGoDown(int level);
 
 char* pattern = "";
 int maxLevels = -1;
-int allFiles = -1;
+int allFiles = 0;
 
 int dirsCount = 0;
 int filesCount = 0;
@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
                 i++;
                 break;
             case 'L':
-                maxLevels = atoi(optarg);
+                maxLevels = atoi(optarg)-1;
                 //printf("max levels: %d\n", maxLevels);
                 i++;
                 break;
@@ -60,16 +60,18 @@ int main(int argc, char** argv) {
         printf("%s", path);
         int pipeJump[PATH_MAX];
         traverse(path, 0, pipeJump);
+        printf("\n");
     }
 
     // the following can't be reached if optind==argc
     for (i=optind; i<argc; i++) {
-        printf("%d: %s", i, argv[i]);
+        printf("%s", argv[i]);
         int pipeJump[PATH_MAX];
         traverse(argv[i], 0, pipeJump);
+        printf("\n");
     }
 
-    printf("\n\n%d directories, %d files\n", dirsCount, filesCount);
+    printf("\n%d directories, %d files\n", dirsCount, filesCount);
     exit(0);
 }
 
@@ -81,10 +83,9 @@ void traverse(const char* path, int level, int* pipeJump) {
         exit(10);
     }
 
-    for (int i=0; i<n; i++) {
+    for (int i=2; i<n; i++) {
         char* name = names[i]->d_name;
-        if (!strcmp(name, ".") || !strcmp(name, "..")) continue;    // skip FS structure files
-        if (!allFiles && !strncmp(name, ".", 1)) continue;          // skip dotfiles if needed
+        if (!allFiles && name[0] == '.') continue;          // skip dotfiles if needed
         int lastOfFolder = (i == n-1) ? 1 : 0;
         if (lastOfFolder)
             pipeJump[level] = 1;
@@ -93,22 +94,22 @@ void traverse(const char* path, int level, int* pipeJump) {
         printf("\n");
         printSpaces(level, lastOfFolder, pipeJump);
         printf("%s", name);
-        if (names[i]->d_type == DT_DIR && canGoDown(level)) {
+        if (names[i]->d_type == DT_DIR) {
             dirsCount++;
-            //int nextPathLength;
+            if (!canGoDown(level)) continue;
             char nextPath[PATH_MAX];
             snprintf(nextPath, PATH_MAX, "%s/%s", path, name);
             traverse(nextPath, level+1, pipeJump);
         } else if (names[i]->d_type == DT_LNK) {
+            filesCount++;
             char* fullPath = (char*) calloc(PATH_MAX, sizeof(char));
             char* linkDst = (char*) calloc(PATH_MAX, sizeof(char));
             snprintf(fullPath, PATH_MAX, "%s/%s", path, name);
-            if (readlink(fullPath, linkDst, sizeof(linkDst)) < 0) {
+            if (readlink(fullPath, linkDst, PATH_MAX) < 0) {
                 perror("System call readlink() failed because of");
                 exit(100);
             } else
                 printf(" -> %s", linkDst);
-            filesCount++;
             free(linkDst);
             free(fullPath);
         } else filesCount++;
