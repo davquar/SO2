@@ -8,6 +8,11 @@
 #include <limits.h>
 #include <fnmatch.h>
 
+/**
+ * This type wraps these things:
+ *  - dirent: a directory entry;
+ *  - n: the number of items in dirent.
+ */
 typedef struct filteredDirent {
     struct dirent** dirent;
     int n;
@@ -20,20 +25,25 @@ void initJumps();
 int canGoDown(int level);
 direntWrapper* filter(struct dirent** names, int length);
 
+/** The program's exit status when not interrupted */
 int exitStatus = 0;
-
+/** The pattern to match files with */
 char* pattern = "";
+/** Max depth of the traversal */
 int maxLevels = -1;
+/** 1 to show hidden files; else 0 */
 int allFiles = 0;
 
+/** Number of directories found */
 int dirsCount = 0;
+/** Number of files found */
 int filesCount = 0;
 
 int main(int argc, char** argv) {
     int c = -1;
-    //char* optarg = "";
-    opterr = 0;
+    opterr = 0;     // suppress default error messages
 
+    // get parameters and arguments
     int i = 0;
     while ((c = getopt(argc, argv, "P:L:a")) != -1) {
         switch (c) {
@@ -60,12 +70,12 @@ int main(int argc, char** argv) {
     if (optind == argc) {
         const char* path = ".";
         printf("%s", path);
-        int pipeJump[PATH_MAX];
+        int pipeJump[PATH_MAX];     // used to tell whether to print or skip a pipe (|) character in printSpaces()
         traverse(path, 0, pipeJump);
         printf("\n");
     }
 
-    // the following can't be reached if optind==argc
+    // note that we can enter this loop iif optind != argc
     for (i=optind; i<argc; i++) {
         printf("%s", argv[i]);
         int pipeJump[PATH_MAX];
@@ -73,26 +83,34 @@ int main(int argc, char** argv) {
         printf("\n");
     }
 
+    // pretty print singular/plural counts of files and directories
     char* dirsText = dirsCount == 1 ? "directory" : "directories";
     char* filesText = filesCount == 1 ? "file" : "files";
     printf("\n%d %s, %d %s\n", dirsCount, dirsText, filesCount, filesText);
+
     exit(exitStatus);
 }
 
+/**
+ * Walks the filesystem tree with these rules:
+ *  - start from the given <path>;
+ *  - go max <level> levels deep;
+ *  - use array <pipeJump> to set the need to skip the print of a pipe character
+*/
 void traverse(const char* path, int level, int* pipeJump) {
-    struct dirent** names;
-    int n = scandir(path, &names, 0, alphasort);
+    struct dirent** names;                           // a directory entry
+    int n = scandir(path, &names, 0, alphasort);     // n: |names|
     if (n == -1) {
         printf(" [error opening dir because of being not a dir]");
-        exitStatus = 10;
+        exitStatus = 10;                             // remember the error status but just continue the execution
         return;
     }
-    direntWrapper* filtered = filter(names, n);
+    direntWrapper* filtered = filter(names, n);     // filter the directory entries according to the user-defined rules
 
-    /* names = filtered->dirent;*/
-    unsigned int rawSize = n;
+    unsigned int rawSize = n;                       // number of unfiltered entries
     n = filtered->n;
 
+    // for each filtered entry
     for (int i=0; i<n; i++) {
         char* name = filtered->dirent[i]->d_name;
         int lastOfFolder = (i == n-1) ? 1 : 0;
@@ -104,6 +122,7 @@ void traverse(const char* path, int level, int* pipeJump) {
         printSpaces(level, lastOfFolder, pipeJump);
         printf("%s", filtered->dirent[i]->d_name);
 
+        // if it is a directory, maybe we need to traverse into it
         if (filtered->dirent[i]->d_type == DT_DIR) {
             dirsCount++;
             if (!canGoDown(level)) continue;
@@ -111,6 +130,7 @@ void traverse(const char* path, int level, int* pipeJump) {
             snprintf(nextPath, PATH_MAX, "%s/%s", path, name);
             traverse(nextPath, level+1, pipeJump);
             free(nextPath);
+        // if it is a link, we should also print where it points
         } else if (filtered->dirent[i]->d_type == DT_LNK) {
             filesCount++;
             char* fullPath = (char*) calloc(PATH_MAX, sizeof(char));
@@ -123,6 +143,7 @@ void traverse(const char* path, int level, int* pipeJump) {
                 printf(" -> %s", linkDst);
             free(linkDst);
             free(fullPath);
+        // in any other case, just forget about it
         } else {
             filesCount++;
         }
@@ -131,43 +152,51 @@ void traverse(const char* path, int level, int* pipeJump) {
     free(filtered->dirent);
     free(filtered);
     
-    //unsigned int i = sizeof(names)/sizeof(struct dirent) + 8;
-    while (rawSize--) {
-        free(names[rawSize]);
-    }
+    while (rawSize--) free(names[rawSize]);
     free(names);
 }
 
+/**
+ * Print spaces, pipes or backticks to build a pretty and nice directory tree.
+ * The pipeJump array tells us how to behave in certain cases.
+ * Basically, the rules are:
+ *  - Print "|" for each level;
+ *  - The current file is the last of its folder: print "`-- fileName";
+ *  - The current file isn't the last of the folder: print "|-- fileName";
+ *  - The current file is in a subtree which root is the last of its folder, skip the print of "|".
+ * Refer to README.md or the tree program for practical examples.
+*/ 
 void printSpaces(int level, int lastOfFolder, int* pipeJump) {
     if (lastOfFolder && level > 0) {
         printf(pipeJump[0] == 0 ? "|" : " ");
-        for (int i=0; i<level-1; i++) {
+        for (int i=0; i<level-1; i++)
             printf(pipeJump[i+1] == 0 ? "   |" : "    ");
-        }
         printf("   `");
-    } else if (lastOfFolder && level == 0) {
+    } else if (lastOfFolder && level == 0)
         printf("`");
-    } else {
+    else {
         printf(pipeJump[0] == 0 ? "|" : " ");
-        for (int i=0; i<level; i++) {
+        for (int i=0; i<level; i++)
             printf(pipeJump[i+1] == 0 ? "   |" : "    ");
-        }
     }
-
     printf("-- ");
 }
 
-/* int isDir(const char* path) {
-    struct stat statbuf;
-    stat(path, &statbuf);
-    return S_ISDIR(statbuf.st_mode);
-} */
-
+/**
+ * Given the current traversal level, tells if we can go down a level deep.
+*/
 int canGoDown(int level) {
     if (maxLevels < 0) return 1;
     return level < maxLevels;
 }
 
+/**
+ * Given a dirent, filters its entries according to the user-defined rules, that are:
+ *  - "-a":     accept hidden files, false by default;
+ *  - "-P p":   only accept filenames that match the pattern p;
+ *              - links should never match.
+ * Returns a direntWrapper that only contains the filtered files.
+*/
 direntWrapper* filter(struct dirent** names, int length) {
     int n=0;
     direntWrapper* filtered = (direntWrapper*) calloc(1, sizeof(direntWrapper));
