@@ -1,5 +1,7 @@
-Homeworks/HW1/so2.grader.1.20172018.tgz
-Homeworks/HW1/consegne/
+Homeworks/HW*/so2.grader.*.tgz
+Homeworks/HW*/so2.grader.*/*
+Homeworks/HW*/so2.2017.2018*
+Homeworks/HW*/consegne/
 cmakelists.txt
 cmake-build-debug
 .idea
