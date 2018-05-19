@@ -18,7 +18,9 @@ void printSpaces(int level, int lastOfFolder, int* pipeJump);
 int isDir(const char* path);
 void initJumps();
 int canGoDown(int level);
-direntWrapper* filter(char* pattern, struct dirent** names, int length);
+direntWrapper* filter(struct dirent** names, int length);
+
+int exitStatus = 0;
 
 char* pattern = "";
 int maxLevels = -1;
@@ -30,7 +32,7 @@ int filesCount = 0;
 int main(int argc, char** argv) {
     int c = -1;
     //char* optarg = "";
-    //opterr = 0;
+    opterr = 0;
 
     int i = 0;
     while ((c = getopt(argc, argv, "P:L:a")) != -1) {
@@ -38,28 +40,21 @@ int main(int argc, char** argv) {
             case 'a':
                 allFiles = 1;
                 i++;
-                //printf("all files\n");
                 break;
             case 'P':
                 pattern = optarg;
-                //printf("pattern: %s\n", pattern);
                 i++;
                 break;
             case 'L':
                 maxLevels = atoi(optarg)-1;
-                //printf("max levels: %d\n", maxLevels);
                 i++;
                 break;
             case '?':
-                if (optopt == 'P' || optopt == 'L') {
-                    fprintf(stderr, "Usage: 1 [-P pattern] [-L level] [-a] [dirs]\n");
-                    exit(100);
-                }
+                fprintf(stderr, "Usage: %s  [-P pattern] [-L level] [-a] [dirs]\n", argv[0]);
+                exit(20);
                 break;
         }
     }
-
-    //printf("argc: %d\ni: %d\noptind:%d\n", argc, i, optind);
 
     // if nothing is passed as argument, fall back to the current directory
     if (optind == argc) {
@@ -78,8 +73,10 @@ int main(int argc, char** argv) {
         printf("\n");
     }
 
-    printf("\n%d directories, %d files\n", dirsCount, filesCount);
-    exit(0);
+    char* dirsText = dirsCount == 1 ? "directory" : "directories";
+    char* filesText = filesCount == 1 ? "file" : "files";
+    printf("\n%d %s, %d %s\n", dirsCount, dirsText, filesCount, filesText);
+    exit(exitStatus);
 }
 
 void traverse(const char* path, int level, int* pipeJump) {
@@ -87,18 +84,17 @@ void traverse(const char* path, int level, int* pipeJump) {
     int n = scandir(path, &names, 0, alphasort);
     if (n == -1) {
         printf(" [error opening dir because of being not a dir]");
-        exit(10);
+        exitStatus = 10;
+        return;
     }
+    direntWrapper* filtered = filter(names, n);
 
-    if (pattern != "") {
-        direntWrapper* filtered = filter(pattern, names, n);
-        names = filtered->dirent;
-        n = filtered->n;
-    }
+    /* names = filtered->dirent;*/
+    unsigned int rawSize = n;
+    n = filtered->n;
 
     for (int i=0; i<n; i++) {
-        char* name = names[i]->d_name;
-        if (!allFiles && name[0] == '.') continue;          // skip dotfiles if needed
+        char* name = filtered->dirent[i]->d_name;
         int lastOfFolder = (i == n-1) ? 1 : 0;
         if (lastOfFolder)
             pipeJump[level] = 1;
@@ -106,15 +102,16 @@ void traverse(const char* path, int level, int* pipeJump) {
             pipeJump[level] = 0;
         printf("\n");
         printSpaces(level, lastOfFolder, pipeJump);
-        printf("%s", name);
+        printf("%s", filtered->dirent[i]->d_name);
 
-        if (names[i]->d_type == DT_DIR) {
+        if (filtered->dirent[i]->d_type == DT_DIR) {
             dirsCount++;
             if (!canGoDown(level)) continue;
-            char nextPath[PATH_MAX];
+            char* nextPath = (char*) calloc(PATH_MAX, sizeof(char));
             snprintf(nextPath, PATH_MAX, "%s/%s", path, name);
             traverse(nextPath, level+1, pipeJump);
-        } else if (names[i]->d_type == DT_LNK) {
+            free(nextPath);
+        } else if (filtered->dirent[i]->d_type == DT_LNK) {
             filesCount++;
             char* fullPath = (char*) calloc(PATH_MAX, sizeof(char));
             char* linkDst = (char*) calloc(PATH_MAX, sizeof(char));
@@ -130,8 +127,14 @@ void traverse(const char* path, int level, int* pipeJump) {
             filesCount++;
         }
     }
+
+    free(filtered->dirent);
+    free(filtered);
     
-    while (n--) free(names[n]);
+    //unsigned int i = sizeof(names)/sizeof(struct dirent) + 8;
+    while (rawSize--) {
+        free(names[rawSize]);
+    }
     free(names);
 }
 
@@ -154,27 +157,31 @@ void printSpaces(int level, int lastOfFolder, int* pipeJump) {
     printf("-- ");
 }
 
-int isDir(const char* path) {
+/* int isDir(const char* path) {
     struct stat statbuf;
     stat(path, &statbuf);
     return S_ISDIR(statbuf.st_mode);
-}
+} */
 
 int canGoDown(int level) {
     if (maxLevels < 0) return 1;
     return level < maxLevels;
 }
 
-direntWrapper* filter(char* pattern, struct dirent** names, int length) {
+direntWrapper* filter(struct dirent** names, int length) {
     int n=0;
     direntWrapper* filtered = (direntWrapper*) calloc(1, sizeof(direntWrapper));
     filtered->dirent = (struct dirent**) calloc(0, sizeof(struct dirent));
     for (int i=2; i<length; i++) {
-        if (names[i]->d_type == DT_DIR || fnmatch(pattern, names[i]->d_name, FNM_PERIOD) == 0) {
-            filtered->dirent = realloc(filtered->dirent, (++n)*sizeof(struct dirent));
-            filtered->dirent[n-1] = names[i];
-            filtered->n = n;
-        }
+        if (allFiles != 1 && names[i]->d_name[0] == '.') continue;
+        int isDir = names[i]->d_type == DT_DIR;
+        int isLink = names[i]->d_type == DT_LNK;
+        int matches = pattern == "" ? 1 : fnmatch(pattern, names[i]->d_name, 0) == 0;
+        if (!isDir && !matches) continue;
+        if (isLink && pattern != "") continue;
+        filtered->dirent = realloc(filtered->dirent, (++n)*sizeof(struct dirent));
+        filtered->dirent[n-1] = names[i];
+        filtered->n = n;
     }
     return filtered;
 }

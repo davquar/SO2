@@ -5,3 +5,4 @@ make1: 1.c
 
 clean:
 	rm -f 1.o
+	rm -f 1
