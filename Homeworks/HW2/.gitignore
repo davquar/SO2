@@ -1,0 +1,6 @@
+grader.2
+*.tgz
+*.out
+.vscode
+tests
+valgrind.txt
